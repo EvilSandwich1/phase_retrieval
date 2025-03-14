@@ -7,7 +7,7 @@ from PIL import Image
 lambda_ = 2.14e-3  # Длина волны [м]
 f = 50e-3  # Фокусное расстояние [м]
 resolution = 128  # Разрешение
-plate_size = 33.92e-3  # Размер пластины [м]
+plate_size = 80e-3  # Размер пластины [м]
 dx = plate_size / resolution  # Шаг сетки [м]
 
 # Входной пучок (гауссов)
@@ -36,18 +36,19 @@ def angular_spectrum_propagation(field, wavelength, dx, dy, distance):
     k = 2 * np.pi / wavelength
 
     # Пространственные частоты
-    fx = np.fft.fftshift(np.fft.fftfreq(nx, dx))
-    fy = np.fft.fftshift(np.fft.fftfreq(ny, dy))
-    FX, FY = np.meshgrid(fx, fy)
+    kx = np.fft.fftshift(np.fft.fftfreq(nx, dx)) * 2 * np.pi
+    ky = np.fft.fftshift(np.fft.fftfreq(ny, dy)) * 2 * np.pi
+    FX, FY = np.meshgrid(kx, ky)
 
     # Вычисляем выражение под корнем и заменяем отрицательные значения на 0
-    under_sqrt_raw = 1 - (wavelength * FX) ** 2 - (wavelength * FY) ** 2
-    under_sqrt = np.maximum(under_sqrt_raw, 0)  # Гарантируем, что under_sqrt >= 0
+    under_sqrt = k ** 2 - FX ** 2 - FY ** 2
+    under_sqrt = np.maximum(under_sqrt, 0)  # Гарантируем, что under_sqrt >= 0
 
     # Передаточная функция (учитываем только распространяющиеся волны)
     #H = -1j * k / 2 / np.pi / distance * np.exp(1j * k * distance * np.sqrt(under_sqrt))
-    H = np.exp(1j * k * distance * np.sqrt(under_sqrt))
-    H[under_sqrt_raw <= 0] = 0  # Обнуляем затухающие компоненты
+    test = np.sqrt(under_sqrt)
+    H = np.exp(1j * distance * np.sqrt(under_sqrt))
+    H[under_sqrt <= 0] = 0  # Обнуляем затухающие компоненты
 
     # Преобразование Фурье поля
     field_fft = np.fft.fftshift(np.fft.fft2(np.fft.ifftshift(field)))
@@ -60,13 +61,14 @@ def angular_spectrum_propagation(field, wavelength, dx, dy, distance):
     return field_prop
 
 
-def gerchberg_saxton(i_target, i_in, wavelength, focal_length, dx, iterations=100, visualize=False, mse_threshold=0.01e-12):
+def gerchberg_saxton(i_target, i_in, wavelength, focal_length, dx, iterations=100, visualize=False, mse_threshold=0.01e-11):
     # Нормировка целевой интенсивности
     power_in = np.sum(i_in)
     i_target_norm = i_target * (power_in / np.sum(i_target))
 
     # Инициализация случайной фазы
     phase = np.random.rand(*i_in.shape) * 2 * np.pi
+    phase = np.zeros_like(phase)
     phase_prev = np.zeros_like(phase)  # Для хранения предыдущей фазы
     tk_prev = 1 + np.zeros_like(phase) #
     e_in = np.abs(i_in) * np.exp(1j * phase)
@@ -125,7 +127,7 @@ def gerchberg_saxton(i_target, i_in, wavelength, focal_length, dx, iterations=10
         mse = np.mean((np.abs(e_out) ** 2 / np.sum(np.abs(e_out) ** 2) - i_target_norm / power_in) ** 2)
         mse_history.append(mse)
 
-        if visualize and (i % 10 == 0 or i == iterations - 1):
+        if visualize and (i % 100 == 0 or i == iterations - 1):
             ax1.clear(), ax2.clear(), ax3.clear()
             ax1.semilogy(mse_history)
             ax1.set_title('MSE: %.2e' % mse)
@@ -145,11 +147,11 @@ def gerchberg_saxton(i_target, i_in, wavelength, focal_length, dx, iterations=10
 
 
 # Загрузка целевого изображения (укажите путь к вашему файлу)
-image_path = 'D:/рабочий стол/Курганский ИД/фокусаторы/Фокусаторы/Фокусаторы/SPR algorithm/cross2_300x300.png'
+image_path = 'D:/рабочий стол/Курганский ИД/фокусаторы/G-S/G-S/images/krest_dlya_kamery.png'
 i_target = load_target_image(image_path, resolution)
 
 # Запуск алгоритма
-phase_gs, mse, e_in = gerchberg_saxton(i_target, i_in, lambda_, f, dx, iterations=500, visualize=True)
+phase_gs, mse, e_in = gerchberg_saxton(i_target, i_in, lambda_, f, dx, iterations=1000, visualize=True)
 # Сохраняем фазовый профиль в файл 'phase_profile.npy'
 np.save('C:/Users/kurganskij/Desktop/Fireworks G-S/phase_profile.npy', phase_gs)
 

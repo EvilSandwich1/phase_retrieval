@@ -66,13 +66,14 @@ def angular_spectrum_propagation(field, wavelength, dx, dy, distance):
     return field_prop
 
 
-def gerchberg_saxton(i_target, i_in, wavelength, focal_length, dx, iterations=100, visualize=False, mse_threshold=0.005e-12):
+def gerchberg_saxton(i_target, i_in, wavelength, focal_length, dx, iterations=100, visualize=False, mse_threshold=0.08e-12):
     # Нормировка целевой интенсивности
     power_in = np.sum(i_in)
     i_target_norm = i_target * (power_in / np.sum(i_target))
 
     # Инициализация случайной фазы
     phase = np.random.rand(*i_in.shape) * 2 * np.pi
+    phase = np.zeros_like(phase)
     phase_prev = np.zeros_like(phase)  # Для хранения предыдущей фазы
     tk_prev = 1 + np.zeros_like(phase) #
     e_in = np.abs(i_in) * np.exp(1j * phase)
@@ -135,7 +136,7 @@ def gerchberg_saxton(i_target, i_in, wavelength, focal_length, dx, iterations=10
         # Наложение входной амплитуды
         e_in = np.abs(i_in) * np.exp(1j * phase)
 
-        if visualize and (i % 10 == 0 or i == iterations - 1):
+        if visualize and (i % 100 == 0 or i == iterations - 1):
             ax1.clear(), ax2.clear(), ax3.clear()
             ax1.semilogy(mse_history)
             ax1.set_title('MSE: %.2e' % mse)
@@ -294,26 +295,13 @@ def shitpost_stl_gen(phase, x, y, wavelength, n=1.54, filename='phase_profile1.s
     phase_mesh.save(filename, mode = stl.Mode.ASCII)
     print(f"STL файл сохранён как {filename}")
 
-    # Создаём 3D-ось
-    figure = plt.figure()
-    axes = mplot3d.Axes3D(figure)
-
-    # Добавляем модель на ось
-    axes.add_collection3d(mplot3d.art3d.Poly3DCollection(phase_mesh.vectors))
-
-    # Автоматическое масштабирование
-    scale = phase_mesh.points.flatten()
-    axes.auto_scale_xyz(scale, scale, scale)
-
-    # Показываем модель
-    plt.show()
 
 # Загрузка целевого изображения (укажите путь к вашему файлу)
 image_path = 'D:/рабочий стол/Курганский ИД/фокусаторы/G-S/G-S/images/krest_dlya_kamery.png'
 i_target = load_target_image(image_path, resolution)
 
 # Запуск алгоритма
-phase_gs, mse, e_in = gerchberg_saxton(i_target, i_in, lambda_, f, dx, iterations=2000, visualize=True)
+phase_gs, mse, e_in = gerchberg_saxton(i_target, i_in, lambda_, f, dx, iterations=1000, visualize=True)
 # Сохраняем фазовый профиль в файл 'phase_profile.npy'
 np.save('C:/Users/kurganskij/Desktop/Fireworks G-S/phase_profile.npy', phase_gs)
 

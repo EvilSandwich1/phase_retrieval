@@ -112,7 +112,7 @@ def gerchberg_saxton(i_target, i_in, wavelength, focal_length, dx, iterations=10
         mse = np.mean((np.abs(e_out) ** 2 / np.sum(np.abs(e_out) ** 2) - i_target_norm / power_in) ** 2)
         mse_history.append(mse)
 
-        if visualize and (i % 1 == 0 or i == iterations - 1):
+        if visualize and (i % 100 == 0 or i == iterations - 1):
             ax1.clear(), ax2.clear(), ax3.clear()
             ax1.semilogy(mse_history)
             ax1.set_title('MSE: %.2e' % mse)
@@ -287,7 +287,7 @@ image_path = 'D:/рабочий стол/Курганский ИД/фокуса�
 i_target = load_target_image(image_path, resolution)
 
 # Запуск алгоритма
-phase_gs, mse, e_in = gerchberg_saxton(i_target, i_in, lambda_, f, dx, iterations=2000, visualize=True)
+phase_gs, mse, e_in = gerchberg_saxton(i_target, i_in, lambda_, f, dx, iterations=1000, visualize=True)
 # Сохраняем фазовый профиль в файл 'phase_profile.npy'
 np.save('C:/Users/kurganskij/Desktop/Fireworks G-S/phase_profile.npy', phase_gs)
 
