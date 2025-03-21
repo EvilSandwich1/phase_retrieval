@@ -118,25 +118,32 @@ def gerchberg_saxton(i_target, i_in, wavelength, focal_length, dx, iterations=10
         e_out_prev = e_out_prime
 
         # Расчет ошибки
-        mse = np.mean((np.abs(e_out) ** 2 / np.sum(np.abs(e_out) ** 2) - i_target_norm / power_in) ** 2)
+        mse = (np.sum(np.abs(e_out) ** 2 - i_target_norm) ** 2) / np.sum(i_target_norm ** 2)
         mse_history.append(mse)
         eta = math.log10(abs(mse))
 
+        gradient = 2 * np.sum(np.abs(e_out) ** 2 - i_target_norm) / np.sum(i_target_norm ** 2)
+        grad_asm = angular_spectrum_propagation(1j * e_in, wavelength, dx, dx, focal_length)
+        sosal = np.conj(e_out)
+        sosal2 = grad_asm * np.conjugate(e_out)
+        test = np.real(grad_asm * np.conjugate(e_out))
+        hk = gradient * 2 * np.real(grad_asm * np.conj(e_out))
+
         # Градиентный спуск в реальном пространстве
-        if i > 0:
-            hk = mse_history[-1] - mse_history[-2] / (np.angle(e_in_prime) - phase_prev)  # Разница между текущей и предыдущей фазой
-        else:
-            hk = np.angle(e_in_prime) - phase_prev
+        #if i > 0:
+        #    hk = mse_history[-1] - mse_history[-2] / (np.angle(e_in_prime) - phase_prev)  # Разница между текущей и предыдущей фазой
+        #else:
+        #    hk = np.angle(e_in_prime) - phase_prev
         tk = np.angle(e_in_prime) - phase  # Фk - PHIk
         alpha_k = np.sum(tk * tk_prev) / np.sum(tk_prev * tk_prev) * eta
         tk_prev = tk
-        phase_prev = np.angle(e_in_prime)  # Сохраняем текущую фазу для следующей итерации
+        #phase_prev = np.angle(e_in_prime)  # Сохраняем текущую фазу для следующей итерации
         phase = np.angle(e_in_prime) + alpha_k * hk  # Обновляем фазу с учетом градиента
 
         # Наложение входной амплитуды
         e_in = np.abs(i_in) * np.exp(1j * phase)
 
-        if visualize and (i % 100 == 0 or i == iterations - 1):
+        if visualize and (i % 1 == 0 or i == iterations - 1):
             ax1.clear(), ax2.clear(), ax3.clear()
             ax1.semilogy(mse_history)
             ax1.set_title('MSE: %.2e' % mse)
